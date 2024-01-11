@@ -18,7 +18,7 @@ This relay on having your version of REDIS up and running as well as hiredis C f
 For later versions I would remove the use of hiredis because of issues related to networking (and move to using ASIO which would soon be replaced with the up comming networking standard in C++).
 
 An example on how to use the REDIS channels:
-
+```cpp
 #include "rediscpp/redis_channel.h"
 
 void process_message(const std::string& msg, redis::publisher& pub)
@@ -76,3 +76,4 @@ void sub_pub(const char* sub_name, const char* pub_name,
         return;
     }
  }
+```
