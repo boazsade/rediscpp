@@ -1,1 +1,8 @@
 # This is a file to build the library
+cmake_minimum_required(VERSION 3.0.0)
+project(rediscpp)
+list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_LIST_DIR}/cmake)
+enable_testing()
+include_directories("${PROJECT_BINARY_DIR}")
+add_subdirectory(ut)
+add_subdirectory(cppredis)
