@@ -6,6 +6,7 @@
 #include <string>
 #include <utility>
 #include <boost/iterator/iterator_facade.hpp>
+#include <optional>
 
 namespace redis
 {
@@ -47,7 +48,7 @@ struct multimap_iterator : public boost::iterator_facade<multimap_iterator, // t
     typedef std::string                     mapped_type;
     typedef std::pair<key_type, mapped_type> result_type;
 
-    multimap_iterator(const reply* r); 
+    multimap_iterator(result::array&& r); 
 
     multimap_iterator();    // for end iterator
 
@@ -74,7 +75,7 @@ struct multimap_key_iterator : public boost::iterator_facade<multimap_key_iterat
                                >
 {
     multimap_key_iterator();    // for end();
-    multimap_key_iterator(const reply* r);
+    multimap_key_iterator(result::array&& r);
 
 private:
     void increment();
@@ -112,7 +113,7 @@ private:
     
     friend class rmultimap;
 public:
-    mapped_type operator [] (const key_type& key) const; // unlike stl you are not allow to change the value inside a map
+    std::optional<mapped_type> operator [] (const key_type& key) const; // unlike stl you are not allow to change the value inside a map
 
     bool insert(const value_type& new_entry) const; // new entry into redis
     
@@ -122,23 +123,23 @@ public:
 
     std::size_t size() const;                   // return the number of elements under the same primary key
 
-    iterator begin();                           // return iterator to the begining of the <key, value> list of entreis
+    iterator begin();                           // return iterator to the beginning of the <key, value> list of entries
 
     iterator end();                             // return iterator to the end of the list of entries to the primary key
 
-    const_iterator begin() const;               // return iterator to the begining of the <key, value> list of entreis
+    const_iterator begin() const;               // return iterator to the beginning of the <key, value> list of entries
 
     const_iterator end() const;                 // return iterator to the end of the list of entries to the primary key
 
     keys_iterator keys_begin();                 /// iterator to the start of list of all keys
 
-    keys_iterator keys_end();                   // iterator to the end of list of all keys (cannot be deferenced)
+    keys_iterator keys_end();                   // iterator to the end of list of all keys (cannot be deference)
 
     const_keys_iterator keys_begin() const;     /// iterator to the start of list of all keys
 
-    const_keys_iterator keys_end() const;       // iterator to the end of list of all keys (cannot be deferenced)
+    const_keys_iterator keys_end() const;       // iterator to the end of list of all keys (cannot be deference)
 
-    iterator find(const key_type& key);          // find entry in the primary key entry with a given key
+    std::optional<std::string> find(const key_type& key) const;  // find entry in the primary key entry with a given key
 
     void erase(const key_type& key);            // remove entry from the primary key
 
@@ -148,7 +149,7 @@ private:
     end_point* ep;
 };
 
-// This class is in a sense the same as STL multi index,
+// This class is in a sense the same as STL multi map,
 // we have a primary key that is used for lookup and then 
 // unlike the multimap of STL we can fetch an internal 
 // object using a "tag" or a secondary key into the storage
@@ -165,7 +166,7 @@ public:
 
     void insert(const key_type&, const value_type&);    // this would generate a new key if not found and insert a value to the key
 
-    void clear(const key_type& key) ;                   // remove any entries assosiated with a given key that is control by this
+    void clear(const key_type& key) ;                   // remove any entries associated with a given key that is control by this
 
 private:
     end_point endpoint;

@@ -149,14 +149,14 @@ namespace redis
         if (done) {
             return finish;
         }
-        reply red;
+        //reply red;
 
-        redisReply* r = cast(red);
+        redisReply* r = nullptr;//cast(red);
 
         if (redisGetReply(cast(comm.by()), (void**)&r) == REDIS_OK) {
             if (r->element && r->element[2]) {
 
-                std::string msg = std::string(r->element[2]->str, r->element[2]->len); 
+                auto msg = std::string(r->element[2]->str, r->element[2]->len); 
                 if (msg == TERMINATION_MESSAGE || msg.empty()) {
 #if defined (WIN32) && defined(close)
 #   pragma push_macro("close")
