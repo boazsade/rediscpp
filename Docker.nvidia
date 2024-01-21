@@ -1,0 +1,64 @@
+FROM debian:11
+
+#RUN apt update && apt-get install -y libopenscap8
+RUN apt update 
+# enable install for the build tools
+RUN DEBIAN_FRONTEND=noninteractive apt-get -y install tzdata
+ENV LANG en_US.utf8
+ENV DEBIAN_FRONTEND noninteractive
+
+# base installation
+RUN apt update && \
+    apt-get install -y build-essential zlib1g \
+    zlib1g-dev cmake libgtest-dev ninja-build \
+    vim python3-pip
+
+# packages related to openCV build
+RUN apt install -y  libssl-dev libboost-all-dev  \
+    pkg-config libgtk-3-dev  libavcodec-dev libavformat-dev \
+    libswscale-dev libv4l-dev  libxvidcore-dev libx264-dev \
+    libjpeg-dev libpng-dev libtiff-dev  \
+    gfortran openexr libatlas-base-dev python3-dev \
+    python3-numpy  libtbb2 libtbb-dev \
+    libdc1394-22-dev git libeigen3-dev \
+    libglew-dev libceres-dev
+
+
+## Install openCV
+RUN mkdir -p /etc/opencv
+WORKDIR /etc/opencv
+RUN git clone https://github.com/opencv/opencv.git
+RUN git clone https://github.com/opencv/opencv_contrib.git
+RUN cd opencv && \
+	mkdir cvbuild && \
+	cd cvbuild && \
+	cmake -D CMAKE_BUILD_TYPE=RELEASE \ 
+		-D CMAKE_INSTALL_PREFIX=/usr/local \ 
+		-DBUILD_LIST=core \
+		-D INSTALL_C_EXAMPLES=OFF \ 
+		-D INSTALL_PYTHON_EXAMPLES=OFF \ 
+		-D OPENCV_GENERATE_PKGCONFIG=ON \ 
+		-D OPENCV_EXTRA_MODULES_PATH=/etc/opencv/opencv_contrib/modules \
+		-D BUILD_EXAMPLES=OFF .. && \
+		cmake --build . -j18 && \
+		cmake --install .
+
+## install CUDA
+RUN mkdir -p /nvidia
+WORKDIR /nvidia
+COPY *.deb .
+RUN apt install -y wget curl linux-headers-5.10.0-22-amd64 software-properties-common && \
+    add-apt-repository contrib && \
+    apt install -y software-properties-common -y && \
+    add-apt-repository contrib && \
+    apt-key del 7fa2af80 || true && \
+    wget https://developer.download.nvidia.com/compute/cuda/repos/debian11/x86_64/cuda-keyring_1.1-1_all.deb && \
+    dpkg -i cuda-keyring_1.1-1_all.deb && \
+    apt update && \
+    apt-get --allow-releaseinfo-change update && \
+    apt-get -y install cuda && \
+    apt install -y ./cudnn-local-repo-ubuntu2204-8.9.7.29_1.0-1_amd64.deb && \
+    cp /var/cudnn-local-repo-ubuntu2204-8.9.7.29/cudnn-local-08A7D361-keyring.gpg /usr/share/keyrings/ && \
+    dpkg -i ./nv-tensorrt-local-repo-ubuntu2204-8.6.1-cuda-12.0_1.0-1_amd64.deb && \
+    cp /var/nv-tensorrt-local-repo-ubuntu2204-8.6.1-cuda-12.0/nv-tensorrt-local-42B2FC56-keyring.gpg /usr/share/keyrings/ && \
+    apt update && apt-get -y install tensorrt
