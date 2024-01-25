@@ -1,7 +1,7 @@
 #pragma once
 
 #include <string>
-#include <boost/shared_ptr.hpp>
+#include <memory>
 #include <stdexcept>
 
 /**
@@ -112,7 +112,7 @@ namespace redis
     private:
         void dummy() const {}
 
-        bool finilized(redisContext* rc);
+        bool finalized(redisContext* rc);
 
         bool start();
 
@@ -122,7 +122,7 @@ namespace redis
         operator boolean_type () const;     // return false type (not false of C++) if this has an error
 
     private:
-        typedef boost::shared_ptr<redisContext> data_type;
+        typedef std::shared_ptr<redisContext> data_type;
         data_type connection;
     };
 }   // end of namespace redis

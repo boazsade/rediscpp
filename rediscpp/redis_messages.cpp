@@ -1,22 +1,26 @@
 #include "redis_messages.h"
 #include "redis_reply.h"
+#include "result/results.h"
+#include "rediscpp/internal/commands.h"
 #include <hiredis/hiredis.h>
-#include <boost/lexical_cast.hpp>
+#include <boost/algorithm/string.hpp>
 #include <iostream>
+
 
 namespace redis
 {
+    namespace 
+    {
+        
+    }   // end of local namespace
+
     rstring::rstring(end_point ep, const std::string& name) : key_name(name), connection(ep)
     {
     }
 
     rstring& rstring::operator = (const std::string& value)
-    {
-        if (connection) {
-            redisCommand(cast(connection), "SET %s %b", key_name.c_str(), value.data(), value.size());
-        } else {
-            throw connection_error("trying to use invalid endpoint object to set string value");
-        }
+    {       
+        internal::process_validate<void>::run(connection,  "SET %s %b", key_name.c_str(), value.data(), value.size());
         return *this;
     }
 
@@ -28,42 +32,26 @@ namespace redis
 
     void rstring::append(const std::string& add_str)
     {
-        if (connection) {
-            redisCommand(cast(connection), "APPEND %s %b", key_name.c_str(), add_str.data(), add_str.size());
-        } else {
-            throw connection_error("trying to use invalid endpoint object to set string value");
-        }
+        internal::process_validate<void>::run(connection,  "APPEND %s %b", key_name.c_str(), add_str.data(), add_str.size());
     }
 
     std::string rstring::str() const
     {
-        static const std::string error = std::string();
-
-        if (connection) {
-            reply r = (redisReply*)redisCommand(cast(connection), "GET %s", key_name.c_str());
-
-            if (r && r.answer()) {
-                return std::string(r.answer(), r.size());
-            }
-        } else {
-            throw connection_error("trying to use invalid endpoint object to get string value");
-        } 
-        return error;
+        const auto r = internal::process_validate<result::string>::run(connection, "GET %s", key_name.c_str());
+        
+        return result::to_string(r);        
     }
     
     std::string::size_type rstring::size() const
     {
-        if (connection) {
-            reply r = (redisReply*)redisCommand(cast(connection), "GET %s", key_name.c_str());
-
-            if (r) {
-                return r.size();
-            }
-        } else {
-            throw connection_error("trying to use invalid endpoint object to get string value");
+        try {
+            auto s = str();
+            return s.size();
+        } catch (const connection_error& e) {
+            throw e;
+        } catch (...) {
+            return 0;
         }
-
-        return 0;
 
     }
 
@@ -84,17 +72,12 @@ namespace redis
 
     std::string rstring::operator () (int from, int to) const
     {
-        if (!connection) {
-            throw connection_error("trying to use invalid endpoint object to get string value");
-        }
-        reply r = (redisReply*)redisCommand(cast(connection), "GETRANGE %s %s %s", key_name.c_str(),
-                                boost::lexical_cast<std::string>(from).c_str(), 
-                                boost::lexical_cast<std::string>(to).c_str());
-        if (r && r.answer()) {
-            return std::string(r.answer(), r.size());
-        } else {
-            return std::string();
-        }
+        const auto r = internal::process_validate<result::string>::run(connection, "GETRANGE %s %s %s", key_name.c_str(),
+            std::to_string(from).c_str(),
+            std::to_string(to).c_str()
+        );
+        
+        return result::to_string(r);
     }
 
     void rstring::erase()
@@ -116,11 +99,10 @@ namespace redis
 
     bool rmap::insert(const key_type& key, mapped_type value) const
     {
-        if (!connection) {
-            throw connection_error("trying to use invalid endpoint object to get map entry");
-        }        
-        reply r = (redisReply*)redisCommand(cast(connection), "SET %s %b", key.c_str(), value.data(), value.size());
-        return r && r.get() != 0;
+        const auto r = internal::process_validate<result::status>::run(connection, "SET %s %b", 
+                     key.c_str(), value.data(), value.size());
+      
+        return boost::algorithm::iequals(r.message(), "ok");
     }
 
     bool rmap::insert(const value_type& new_val) const
@@ -133,14 +115,7 @@ namespace redis
         if (!connection) {
             throw connection_error("trying to use invalid endpoint object to find map entry");
         }
-        reply r = (redisReply*)redisCommand(cast(connection), "GET %s", key.c_str());
-        if (r && r.what() == reply::STRING) {
-            return mapped_type(r.answer(), r.size());
-        } else {
-            
-            static const mapped_type error = mapped_type();
-            return error;
-        }
+        return rstring(connection, key).str();
     }
 
     void rmap::erase(const key_type& k) const
@@ -154,16 +129,8 @@ namespace redis
 
     std::size_t  rmap::size() const
     {
-        if (connection) {
-            reply r = (redisReply*)redisCommand(cast(connection), "DBSIZE");    // note that this is not for a given entry!!
-            if (r && r.what() == reply::INTEGER) {
-                return r.get();
-            } else {
-                return 0;
-            }
-        } else {
-            return 0;
-        }
+        const auto r = internal::process_validate<result::integer>::run(connection, "DBSIZE");             
+        return r.message();       
     }
 
     bool rmap::empty() const
@@ -178,89 +145,84 @@ namespace redis
     {
     }
 
-    long_int::long_int(end_point c, const std::string& n, value_type v) : connection(c), name(n)
-    {
-        if (!connection) {
-            throw connection_error("trying to use invalid endpoint object to set int value");
-        }
+    long_int::long_int(end_point c, const std::string& n, value_type v) : connection(c), name(n) {
 
-        redisCommand(cast(connection), "SET %s %s", name.c_str(), boost::lexical_cast<std::string>(v).c_str());
+        const auto extract = [](const auto& result) -> std::string {
+            if (result.is_error()) {
+                return result.error_value();
+            }
+            const auto s = result.unwrap();
+            const auto s2 = s.message();
+            return std::string(s2.data(), s2.size());
+        };
+
+        const auto r = internal::process<result::status>::run(connection, "SET %s %s", name.c_str(), std::to_string(v).c_str());
+        auto em = extract(r);
+        if (!boost::algorithm::iequals(em, "ok")) {
+            throw connection_error(std::string(em.data(), em.size()));
+        }
     }
 
     long_int& long_int::operator = (value_type val)
     {
-        if (!connection) {
-            throw connection_error("trying to use invalid endpoint object to set int value");
+        constexpr std::string_view expected = "ok";
+        const auto r = internal::process<result::status>::run(connection, "SET %s %s", name.c_str(), std::to_string(val).c_str());
+        const auto em = r.is_error() ? r.error_value() : r.unwrap().message();
+        if (!boost::algorithm::iequals(em, "ok")) {
+            throw connection_error(std::string(em.data(), em.size()));
         }
-        redisCommand(cast(connection), "SET %s %s", name.c_str(), boost::lexical_cast<std::string>(val).c_str());
         return *this;
     }
     
     long_int::operator long_int::value_type () const
     {
-        if (!connection) {
-            throw connection_error("trying to use invalid endpoint object to set int value");
-        }
-        reply r = (redisReply*)redisCommand(cast(connection), "GET %s", name.c_str());
-        return r.get();
+        const auto r = internal::process_validate<result::integer>::run(connection, "GET %s", name.c_str());        
+        
+        return r.message();
     }
 
     long_int::value_type long_int::operator ++ () const
     {
-        if (!connection) {
-            throw connection_error("trying to use invalid endpoint object to set int value");
-        }
-        reply r = (redisReply*)redisCommand(cast(connection), "INCR %s", name.c_str());
-        return r.get();
+        const auto r = internal::process_validate<result::integer>::run(connection, "INCR %s", name.c_str());
+              
+        return r.message();
     }
     
     long_int::value_type long_int::operator ++ (int) const
     {
-        if (!connection) {
-            throw connection_error("trying to use invalid endpoint object to set int value");
-        }
-        reply r = (redisReply*)redisCommand(cast(connection), "GET %s", name.c_str());
-        value_type v = r.get();
+        auto i = this->operator()();
+        
         redisCommand(cast(connection), "INCR %s", name.c_str());
-        return v;
+        return i;
     }
 
     long_int::value_type long_int::operator -- () const
-    {
-        if (!connection) {
-            throw connection_error("trying to use invalid endpoint object to set int value");
-        }
-        reply r = (redisReply*)redisCommand(cast(connection), "DECR %s", name.c_str());
-        return r.get();
+    {  
+        const auto r = internal::process_validate<result::integer>::run(connection, "DECR %s", name.c_str());
+             
+        return r.message();
     }
     
     long_int::value_type long_int::operator -- (int) const
     {
-        if (!connection) {
-            throw connection_error("trying to use invalid endpoint object to set int value");
-        }
-        reply r = (redisReply*)redisCommand(cast(connection), "GET %s", name.c_str());
-        value_type v = r.get();
+        auto i = this->operator()();
+        
         redisCommand(cast(connection), "DECR %s", name.c_str());
-        return v;
+        return i;
     }
         
     long_int::value_type long_int::operator += (value_type by) const
     {
-        if (!connection) {
-            throw connection_error("trying to use invalid endpoint object to set int value");
-        }
-        reply r = (redisReply*)redisCommand(cast(connection), "INCRBY %s %s", name.c_str(), boost::lexical_cast<std::string>(by).c_str());
-        return r.get();
+        const auto r = internal::process_validate<result::integer>::run(connection, "INCRBY %s %s", name.c_str(), std::to_string(by).c_str());
+             
+        return r.message();        
     }
     
     long_int::value_type long_int::operator -= (value_type by) const
     {
-        if (!connection) {
-            throw connection_error("trying to use invalid endpoint object to set int value");
-        }
-        reply r = (redisReply*)redisCommand(cast(connection), "DECRBY %s %s", name.c_str(), boost::lexical_cast<std::string>(by).c_str());
-        return r.get();
+        const auto r = internal::process_validate<result::integer>::run(connection, "DECRBY %s %s", name.c_str(), std::to_string(by).c_str());
+                
+        return r.message();        
     }
 
     bool operator == (const long_int& ulr, const long_int& ull)
@@ -372,20 +334,16 @@ namespace redis
 
     bool rarray::push_back(const string_type& value)
     {
-        if (!connection) {
-            throw connection_error("trying to use invalid endpoint object to save new value");
-        }
-        reply r = (redisReply*)redisCommand(cast(connection),"RPUSH %s %b", name.c_str(), value.data(), value.size());
-        return r.valid() && r.what() != reply::ERROR_MSG;
+        const auto r = internal::process_validate<result::integer>::run(connection, "RPUSH %s %b", name.c_str(), value.data(), value.size());
+               
+        return r.message() > 0;        
     }
 
     bool rarray::push_front(const string_type& value)
     {
-        if (!connection) {
-            throw connection_error("trying to use invalid endpoint object to save new value");
-        }
-        reply r = (redisReply*)redisCommand(cast(connection),"LPUSH %s %b", name.c_str(), value.data(), value.size());
-        return r.valid() && r.what() != reply::ERROR_MSG;
+        const auto r = internal::process_validate<result::integer>::run(connection, "LPUSH %s %b", name.c_str(), value.data(), value.size());
+               
+        return r.message() > 0;
     }
 
     rarray::result_type rarray::operator [] (size_type index) const
@@ -395,47 +353,36 @@ namespace redis
 
     rarray::result_type rarray::at(size_type at) const
     {
-        if (!connection) {
-            throw connection_error("trying to use invalid endpoint object to read new value");
-        }
-        reply r = (redisReply*)redisCommand(cast(connection), "GET %s", name.c_str());
-        if (r && r.what() == reply::ARRAY && at < r.elements()) {
-            reply_iterator i(&r);
-            i += at;
-            return result_type(i->answer(), i->size());
+        const auto r = internal::process_validate<result::array>::run(connection, "GET %s", name.c_str());
+        
+        const auto s = result::try_into<result::string>(r.operator[](at)).and_then([](const auto& s) -> ::result<std::string, std::string> {
+            return ok(result::to_string(s));
+        });
+        if (s.is_ok()) {
+            return s.unwrap();
         } else {
-            static const result_type error = result_type();
-            return error;
+            throw std::runtime_error("this is not a valid message: " + s.error_value());
         }
     }
 
     rarray::iterator rarray::begin() const
     {
-        if (!connection) {
-            throw connection_error("trying to use invalid endpoint object to read value");
-        }
-        reply r = (redisReply*)redisCommand(cast(connection), "LRANGE %s 0 -1", name.c_str());
-        if (r && r.what() == reply::ARRAY) { 
-            reply_iterator i(&r);
-            return i;
-        } else {
-            return end();
-        }
+        auto r = internal::process_validate<result::array>::run(connection, "LRANGE %s 0 -1", name.c_str());
+        
+        reply_iterator i(std::move(r));    
+        return i;
     }
 
     rarray::iterator rarray::end() const
     {
-        return reply_iterator(0);
+        return {};
     }
 
     rarray::size_type rarray::size() const
     {
-        if (!connection) {
-            throw connection_error("trying to use invalid endpoint object to read value length");
-        }
-        reply r = (redisReply*)redisCommand(cast(connection), "LLEN %s", name.c_str());
-
-        return r.get(); // the length of the array is the integer value we got from the action
+        auto r = internal::process_validate<result::array>::run(connection, "LLEN %s", name.c_str());
+        
+        return r.size();
     }
 
     bool rarray::empty() const
@@ -449,7 +396,7 @@ namespace redis
             throw connection_error("trying to use invalid endpoint object to delete value");
         }
 
-        reply r = (redisReply*)redisCommand(cast(connection), "DEL %s", name.c_str());
+        redisCommand(cast(connection), "DEL %s", name.c_str());
     }
 
 }   // end of redis namespace

@@ -5,7 +5,6 @@
 #include <string>
 #include <utility>
 #include <algorithm>
-#include <boost/bind.hpp>
 
 namespace redis
 {
@@ -112,7 +111,10 @@ namespace redis
         template<typename It>
         void insert_range(It from, It to)
         {
-            std::for_each(from, to, boost::bind(&rmap::insert, *this, _1));
+            
+            std::for_each(from, to, [this](const auto& v) {
+                this->insert(v);
+            });
         }
 
         // same as operator [] - return the value if found, otherwise return NULL

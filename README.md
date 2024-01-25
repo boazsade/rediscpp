@@ -77,3 +77,29 @@ void sub_pub(const char* sub_name, const char* pub_name,
     }
  }
 ```
+## How to Use
+>As of 17/01/2024 this will start using git submodules.
+You would need to pull this repo with
+```bash
+git clone --recurse-submodules git@github.com:boazsade/rediscpp.git
+```
+Also with this there are many changes with the aim of using less exceptions in the code as well as making the code more modernized.
+Please note that with this you would be able to use docker to build and test:
+```bash
+docker build -t <the tag for your image> .
+```
+```bash
+export GID=$(id -g)
+docker run --rm -ti --user $UID:$GID \
+    --workdir="/home/$USER" --volume="/etc/group:/etc/group:ro" \
+    --name test-image -v <path to this repo>:/builds
+    --volume="/etc/passwd:/etc/passwd:ro" \
+    --volume="/etc/shadow:/etc/shadow:ro" \
+    test-image bash
+```
+Then in the docker you would be able to build with cmake:
+```bash
+mkdir build && cd build &&  cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=1 -DCMAKE_BUILD_TYPE=Debug -G Ninja ..
+cmake --build -j4 .
+```
+Also note that if you're not building with the help of the docker, you can still use it to detect the build dependencies.
