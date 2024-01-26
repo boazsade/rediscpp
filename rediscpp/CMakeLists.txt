@@ -1,5 +1,5 @@
-include(flags)
-include(dependencies)
+#include(flags)
+#include(dependencies)
 
 add_library(rediscpp STATIC           
            redis_channel.h  redis_channel.cpp 
@@ -10,4 +10,5 @@ add_library(rediscpp STATIC
            redis_reply_iterator.h redis_reply_iterator.cpp
 	    ) 
 
+target_include_directories(rediscpp PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>/../)
 list(APPEND EXTRA_INCLUDES rediscpp)

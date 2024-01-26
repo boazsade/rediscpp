@@ -63,6 +63,9 @@
         "optional": "cpp",
         "any": "cpp",
         "map": "cpp",
-        "set": "cpp"
+        "set": "cpp",
+        "list": "cpp",
+        "bitset": "cpp",
+        "typeindex": "cpp"
     }
 }

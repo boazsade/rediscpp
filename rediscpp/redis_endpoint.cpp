@@ -121,7 +121,7 @@ bool end_point::open(const std::string& host, unsigned short port)
     if (start()) {
     // open the connection to the server
         redisContext* c = redisConnect(host.c_str(), port);
-        return finilized(c);
+        return finalized(c);
     } else {
         return false;
     }
@@ -132,7 +132,7 @@ bool end_point::open(const std::string& host, seconds s, unsigned short port)
 {
     if (start()) {
     // open the connection to the server
-        return finilized(connect(host, port, timeout(s, milliseconds(0))));
+        return finalized(connect(host, port, timeout(s, milliseconds(0))));
     } else {
         return false;
     }
@@ -143,7 +143,7 @@ bool end_point::open(const std::string& host, milliseconds ms, unsigned short po
 {
     if (start()) {
     // open the connection to the server
-        return finilized(connect(host, port, timeout(seconds(0), ms)));
+        return finalized(connect(host, port, timeout(seconds(0), ms)));
     } else {
         return false;
     }
@@ -154,14 +154,14 @@ bool end_point::open(const std::string& host, timeout to, unsigned short port)
 {
     if (start()) {
     // open the connection to the server
-        return finilized(connect(host, port, to));
+        return finalized(connect(host, port, to));
     } else {
         return false;
     }
 
 }
 
-bool end_point::finilized(redisContext* rc)
+bool end_point::finalized(redisContext* rc)
 {
     // make sure that we don't have error before using this connection
     if (!rc || rc->err) {
