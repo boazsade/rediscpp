@@ -14,23 +14,27 @@ namespace
     void release_reply(const redisReply* r)
     {
         if (r && (r->type != 0 || r->integer != 0 || r->len != 0)) {
-            freeReplyObject((redisReply*)r);    // like any "good" C interface this is not const :(
+            freeReplyObject(const_cast<redisReply*>(r));    // like any "good" C interface this is not const :(
 // #ifndef WIN32   // this would trigger run time error about accessing a freed memory on windows!
 //             memset(redisReply*)r, 0, sizeof(*r));
 // #endif  // WIN32
         }
     }
-
-    void release_dummy(redisReply*)
-    {
-    }
 }   // end of local namespace
 
 namespace details {
 
-auto panic_if(lowlevel_access::internals* from, int cond) -> void {
+auto panic_if(lowlevel_access::internals* from, int cond) -> bool {
     assert(from);
     assert(from->type == cond);
+#ifdef PANIC_WILL_TERMINATE
+    if (from && from->type == cond) {
+        return true;
+    }
+    std::terminate();
+#else
+    return from && from->type == cond;
+#endif
 }
 
 lowlevel_access::lowlevel_access(internals* from, int cond) : 

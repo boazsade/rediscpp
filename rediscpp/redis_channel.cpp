@@ -139,7 +139,7 @@ namespace redis
 #   undef ERROR
 #endif
         static const message_type error = message_type(std::string(), ERROR);
-        static const message_type timeout = message_type(std::string(), TIME_OUT);
+        static const message_type timeout_t = message_type(std::string(), TIME_OUT);
         static const message_type finish = message_type(std::string(), DONE);
 
         if (!comm.by()) {
@@ -174,8 +174,8 @@ namespace redis
                 }
             } else {
                 int e = errno;
-                if (e == EAGAIN || e == EWOULDBLOCK) {
-                    return timeout;
+                if (e == EAGAIN) {
+                    return timeout_t;
                 } else {
 #if defined (WIN32) && defined(close)
 #   pragma push_macro("close")
@@ -192,8 +192,8 @@ namespace redis
             }
         } else {
             int e = errno;
-            if (e == EAGAIN || e == EWOULDBLOCK) {
-                return timeout;
+            if (e == EAGAIN) {
+                return timeout_t;
             } else {
                 return error;
             }
@@ -202,29 +202,29 @@ namespace redis
 	return error;
     }
 
-    subscriber::message_type subscriber::read(const end_point::timeout& to) const
+    subscriber::message_type subscriber::read(const end_point::timeout_t& to) const
     {
-        static const end_point::timeout no_timeout = end_point::timeout(end_point::seconds(0), end_point::milliseconds(0));
+        static const end_point::timeout_t no_timeout_t = end_point::timeout_t(end_point::seconds_t(0), end_point::milliseconds_t(0));
         comm.by().set_timeout(to);
         message_type m = read();
-        comm.by().set_timeout(no_timeout);
+        comm.by().set_timeout(no_timeout_t);
         return m;
     }
 
-    subscriber::message_type subscriber::read(const end_point::seconds& s) const
+    subscriber::message_type subscriber::read(const end_point::seconds_t& s) const
     {
-        return read(end_point::timeout(s, end_point::milliseconds(0)));
+        return read(end_point::timeout_t(s, end_point::milliseconds_t(0)));
     }
 
-    subscriber::message_type subscriber::read(const end_point::milliseconds& ms) const
+    subscriber::message_type subscriber::read(const end_point::milliseconds_t& ms) const
     {
-        return read(end_point::timeout(end_point::seconds(0), ms));
+        return read(end_point::timeout_t(end_point::seconds_t(0), ms));
     }
 
     void subscriber::interrupt() const
     {
         publisher p = comm.make_publisher();
-        comm.by().set_timeout(end_point::timeout(end_point::seconds(1), end_point::milliseconds(0)));
+        comm.by().set_timeout(end_point::timeout_t(end_point::seconds_t(1), end_point::milliseconds_t(0)));
         p.send(TERMINATION_MESSAGE); 
     }
 }   // end of namespace redis

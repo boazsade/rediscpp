@@ -10,165 +10,122 @@
 namespace redis
 {
 
+using namespace std::string_literals;
 namespace
 {
-    void free_connection(redisContext* rc)
+
+    auto free_connection(redisContext* rc) -> void
     {
         if (rc) {
             redisFree(rc);
         }
     }
 
-    redisContext* connect(const std::string& host, unsigned short port, const end_point::timeout& to)
+    auto connect(const std::string& host, unsigned short port, const end_point::timeout_t& to) -> redisContext*
     {
-        static const unsigned int milli2micro = 1000;
-
-        struct timeval timeout = {cast(to.sec()), cast(to.millis())*milli2micro };
-        redisContext* c =  redisConnectWithTimeout(host.c_str(), port, timeout);
+        struct timeval t = { to.sec().count(),  to.microseconds() };
+        redisContext* c =  redisConnectWithTimeout(host.c_str(), port, t);
         return c;
     }
 
 
 }   // end of local namespace
 
-end_point::seconds::seconds(unsigned int v) : value(v)
-{
-}
-
-
-end_point::seconds& end_point::seconds::operator = (unsigned int v)
-{
-    value = v;
-    return *this;
-}
-
-end_point::milliseconds::milliseconds(unsigned int v) : value(v)
-{
-}
-
-end_point::milliseconds& end_point::milliseconds::operator = (unsigned int v)
-{
-    value = v;
-    return *this;
-}
-
-end_point::timeout::timeout(seconds x, milliseconds y) : s(x), ms(y)
-{
-}
-
-end_point::seconds& end_point::timeout::sec()
-{
-    return s;
-}
-
-const end_point::seconds& end_point::timeout::sec() const
-{
-    return s;
-}
-
-const end_point::milliseconds& end_point::timeout::millis() const
-{
-    return ms;
-}
-
-end_point::milliseconds& end_point::timeout::millis()
-{
-    return ms;
-}
 
 end_point::end_point(const std::string& host, unsigned short port)
 {
-    open(host, port);
-}
-end_point::end_point()
-{
-}
-
-end_point::end_point(const std::string& host, seconds s, unsigned short port)
-{
-    open(host, s, port);
+    if (const auto e = Error(open(host, port)); e) {
+        throw connection_error{e.value()};
+    }
 }
 
-end_point::end_point(const std::string& host, milliseconds ms, unsigned short port)
+
+end_point::end_point(const std::string& host, seconds_t s, unsigned short port)
 {
-    open(host, ms, port);
+    if (const auto e = Error(open(host, s, port)); e) {
+        throw connection_error{e.value()};
+    }
 }
 
-end_point::end_point(const std::string& host, timeout to, unsigned short port)
+end_point::end_point(const std::string& host, milliseconds_t ms, unsigned short port)
 {
-    open(host, to, port);
+    if (const auto e = Error(open(host, ms, port)); e) {
+        throw connection_error{e.value()};
+    }
 }
 
-end_point::~end_point()
+end_point::end_point(const std::string& host, timeout_t to, unsigned short port)
 {
+    if (const auto e = Error(open(host, to, port)); e) {
+        throw connection_error{e.value()};
+    }
 }
 
-bool end_point::start()
+end_point::end_point(named_pipe_t pipe) {
+     if (const auto e = Error(open(pipe)); e) {
+        throw connection_error{e.value()};
+    }
+}
+
+auto end_point::start() -> result_t
 {
     if (connection) {
         close_it();
     }
 
     if (connection) {   // we still have the connection open
-        return false;
+        return failed("error: connection is open"s);
     }
    
-    return true;
+    return ok(true);
 }
 
-bool end_point::open(const std::string& host, unsigned short port)
+auto end_point::open(const std::string& host, unsigned short port) -> result_t
 {
-    if (start()) {
-    // open the connection to the server
-        redisContext* c = redisConnect(host.c_str(), port);
-        return finalized(c);
-    } else {
-        return false;
+    if (const auto e = Error(start()); e) {
+        return failed(e.value());
     }
+    // open the connection to the server
+    redisContext* c = redisConnect(host.c_str(), port);
+    return finalized(c);
 
 }
 
-bool end_point::open(const std::string& host, seconds s, unsigned short port)
+auto end_point::open(const std::string& host, seconds_t s, unsigned short port) -> result_t
 {
-    if (start()) {
-    // open the connection to the server
-        return finalized(connect(host, port, timeout(s, milliseconds(0))));
-    } else {
-        return false;
+    if (const auto e = Error(start()); e) {
+        return failed(e.value());
     }
-
+    // open the connection to the server
+    return finalized(connect(host, port, timeout_t(s, milliseconds_t(0))));
 }
 
-bool end_point::open(const std::string& host, milliseconds ms, unsigned short port)
+auto end_point::open(const std::string& host, milliseconds_t ms, unsigned short port) -> result_t
 {
-    if (start()) {
-    // open the connection to the server
-        return finalized(connect(host, port, timeout(seconds(0), ms)));
-    } else {
-        return false;
+    if (const auto e = Error(start()); e) {
+        return failed(e.value());
     }
-
+    // open the connection to the server
+    return finalized(connect(host, port, timeout_t(seconds_t(0), ms)));
 }
 
-bool end_point::open(const std::string& host, timeout to, unsigned short port)
+auto end_point::open(const std::string& host, timeout_t to, unsigned short port) -> result_t
 {
-    if (start()) {
-    // open the connection to the server
-        return finalized(connect(host, port, to));
-    } else {
-        return false;
+    if (const auto e = Error(start()); e) {
+        return failed(e.value());
     }
-
+    // open the connection to the server
+    return finalized(connect(host, port, to));
 }
 
-bool end_point::finalized(redisContext* rc)
+auto end_point::finalized(redisContext* rc) -> result_t
 {
     // make sure that we don't have error before using this connection
     if (!rc || rc->err) {
-        return false;
+        return failed("we are in invalid state - cannot start connection"s);
     } else {
         connection.reset(rc, free_connection);
-        return true;
+        return ok(true);
     }
 
 }
@@ -178,18 +135,32 @@ end_point::operator boolean_type () const
     return connection.get() != 0 ? &end_point::dummy : (boolean_type)0;
 }
 
-void end_point::close_it()
+auto end_point::close_it() -> void
 {
-    connection.reset((redisContext*)0, free_connection);
+    finalized(nullptr);
 }
 
-void end_point::set_timeout(const timeout& to)
-{
-    static const unsigned int milli2micro = 1000;
+auto end_point::open(named_pipe_t pipe) -> result_t {
+    timeval tv;
+    tv.tv_sec = pipe.timeout_val.sec().count();
+    tv.tv_usec = pipe.timeout_val.microseconds();
+    auto r = redisConnectUnixWithTimeout(pipe.name.c_str(), tv);
+    if (r) {
+        connection.reset(r, free_connection);
+    }
+    switch (r != nullptr) {
+        case true:
+            return ok(true);
+        case false:
+            return failed("failed to initiate connection over local pipe " + pipe.name);
+    }
+}
 
+auto end_point::set_timeout(const timeout_t& to) -> void
+{
     if (connection.get()) {
-        struct timeval timeout = {cast(to.sec()), cast(to.millis())*milli2micro };
-        redisSetTimeout(connection.get(), timeout);
+        struct timeval t = { (to.sec().count()), to.microseconds() };
+        redisSetTimeout(connection.get(), t);
     }
 }
 
@@ -197,5 +168,5 @@ connection_error::connection_error(const std::string& err) : std::runtime_error(
 {
 }
 
-}   // end of redis namepsace
+}   // end of redis namespace
 
