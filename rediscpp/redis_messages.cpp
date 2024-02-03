@@ -1,5 +1,5 @@
 #include "redis_messages.h"
-#include "results.h"
+#include "result/results.h"
 #include "redis_reply.h"
 #include "result/results.h"
 #include "rediscpp/internal/commands.h"
@@ -169,7 +169,7 @@ namespace redis
         constexpr std::string_view expected = "ok";
         const auto r = internal::process<result::status>::run(connection, "SET %s %s", name.c_str(), std::to_string(val).c_str());
         const auto em = r.is_error() ? r.error_value() : r.unwrap().message();
-        if (!boost::algorithm::iequals(em, "ok")) {
+        if (!boost::algorithm::iequals(em, expected)) {
             throw connection_error(std::string(em.data(), em.size()));
         }
         return *this;
@@ -214,50 +214,16 @@ namespace redis
         
     long_int::value_type long_int::operator += (value_type by) const
     {
-<<<<<<< HEAD
-        // if (!connection) {
-        //     throw connection_error("trying to use invalid endpoint object to set int value");
-        // }
-        // if (const auto r  = Ok(result::try_into<result::integer>(
-        //         result::any::from(
-        //             (redisReply*)redisCommand(cast(connection), "INCRBY %s %s", name.c_str(), std::to_string(by).c_str())))); r) {
-        //     return r.value().message();
-        // }
-        // throw std::runtime_error("failed to get integer value");
-        const auto r = process<result::integer>::run(connection, "INCRBY %s %s", name.c_str(), std::to_string(by).c_str());
-        if (r.is_error()) {
-            throw connection_error(r.error_value());
-        }        
-        return r.unwrap().message();        
-=======
         const auto r = internal::process_validate<result::integer>::run(connection, "INCRBY %s %s", name.c_str(), std::to_string(by).c_str());
              
         return r.message();        
->>>>>>> e4858b8defad800a2de7ef2bb7e3f6bf2805622c
     }
     
     long_int::value_type long_int::operator -= (value_type by) const
     {
-<<<<<<< HEAD
-        // if (!connection) {
-        //     throw connection_error("trying to use invalid endpoint object to set int value");
-        // }
-        // if (const auto r  = Ok(result::try_into<result::integer>(
-        //         result::any::from(
-        //             (redisReply*)redisCommand(cast(connection), "DECRBY %s %s", name.c_str(), std::to_string(by).c_str())))); r) {
-        //     return r.value().message();
-        // }
-        // throw std::runtime_error("failed to get integer value");
-        const auto r = process<result::integer>::run(connection, "DECRBY %s %s", name.c_str(), std::to_string(by).c_str());
-        if (r.is_error()) {
-            throw connection_error(r.error_value());
-        }        
-        return r.unwrap().message();        
-=======
         const auto r = internal::process_validate<result::integer>::run(connection, "DECRBY %s %s", name.c_str(), std::to_string(by).c_str());
                 
         return r.message();        
->>>>>>> e4858b8defad800a2de7ef2bb7e3f6bf2805622c
     }
 
     bool operator == (const long_int& ulr, const long_int& ull)
@@ -369,50 +335,16 @@ namespace redis
 
     bool rarray::push_back(const string_type& value)
     {
-<<<<<<< HEAD
-        // if (!connection) {
-        //     throw connection_error("trying to use invalid endpoint object to save new value");
-        // }
-        // if (const auto r  = Ok(result::try_into<result::integer>(
-        //         result::any::from(
-        //             (redisReply*)redisCommand(cast(connection), "RPUSH %s %b", name.c_str(), value.data(), value.size())))); r) {
-        //     return r.value().message() > 0;
-        // }
-        // throw std::runtime_error("failed to insert new element");
-        const auto r = process<result::integer>::run(connection, "RPUSH %s %b", name.c_str(), value.data(), value.size());
-        if (r.is_error()) {
-            throw connection_error(r.error_value());
-        }        
-        return r.unwrap().message() > 0;        
-=======
         const auto r = internal::process_validate<result::integer>::run(connection, "RPUSH %s %b", name.c_str(), value.data(), value.size());
                
         return r.message() > 0;        
->>>>>>> e4858b8defad800a2de7ef2bb7e3f6bf2805622c
     }
 
     bool rarray::push_front(const string_type& value)
     {
-<<<<<<< HEAD
-        const auto r = process<result::integer>::run(connection, "LPUSH %s %b", name.c_str(), value.data(), value.size());
-        if (r.is_error()) {
-            throw connection_error(r.error_value());
-        }        
-        return r.unwrap().message() > 0;        
-        // if (!connection) {
-        //     throw connection_error("trying to use invalid endpoint object to save new value");
-        // }
-        // if (const auto r  = Ok(result::try_into<result::integer>(
-        //         result::any::from(
-        //             (redisReply*)redisCommand(cast(connection), "LPUSH %s %b", name.c_str(), value.data(), value.size())))); r) {
-        //     return r.value().message() > 0;
-        // }
-        // throw std::runtime_error("failed to insert new element");
-=======
         const auto r = internal::process_validate<result::integer>::run(connection, "LPUSH %s %b", name.c_str(), value.data(), value.size());
                
         return r.message() > 0;
->>>>>>> e4858b8defad800a2de7ef2bb7e3f6bf2805622c
     }
 
     rarray::result_type rarray::operator [] (size_type index) const
@@ -422,76 +354,26 @@ namespace redis
 
     rarray::result_type rarray::at(size_type at) const
     {
-<<<<<<< HEAD
-        const auto r = process<result::string>::run(connection, "GET %s", name.c_str());
-        if (r.is_error()) {
-            throw connection_error(r.error_value());
-        }        
-        return result::to_string(r.unwrap());
-        // if (!connection) {
-        //     throw connection_error("trying to use invalid endpoint object to read new value");
-        // }
-        // if (const auto r  = Ok(result::try_into<result::array>(
-        //         result::any::from(
-        //             (redisReply*)redisCommand(cast(connection), "GET %s", name.c_str())))); r) {
-        //     if (r.value().size() > at) {
-        //         auto e = r.value()[at];
-        //         const auto s = result::try_into<result::string>(e);
-        //         if (s.is_ok()) {
-        //             return result::to_string(s.unwrap());
-        //         }
-        //     }
-        // }
-        // throw std::runtime_error("failed to insert new element");
-        // reply r = (redisReply*)redisCommand(cast(connection), "GET %s", name.c_str());
-        // if (r && r.what() == reply::ARRAY && at < r.elements()) {
-        // }
-        //     reply_iterator i(&r);
-        //     i += at;
-        //     return result_type(i->answer(), i->size());
-        // } else {
-        //     static const result_type error = result_type();
-        //     return error;
-        // }
-=======
         const auto r = internal::process_validate<result::array>::run(connection, "GET %s", name.c_str());
         
-        const auto s = result::try_into<result::string>(r.operator[](at)).and_then([](const auto& s) -> ::result<std::string, std::string> {
+        const auto st = result::try_into<result::string>(r.operator[](at)).and_then([](const auto& s) -> ::result<std::string, std::string> {
             return ok(result::to_string(s));
         });
-        if (s.is_ok()) {
-            return s.unwrap();
+        if (st.is_ok()) {
+            return st.unwrap();
         } else {
-            throw std::runtime_error("this is not a valid message: " + s.error_value());
+            throw std::runtime_error("this is not a valid message: " + st.error_value());
         }
->>>>>>> e4858b8defad800a2de7ef2bb7e3f6bf2805622c
+        assert(false);
+        return {};  // we should not be here!!
     }
 
     rarray::iterator rarray::begin() const
     {
-<<<<<<< HEAD
-        auto r = process<result::array>::run(connection, "LRANGE %s 0 -1", name.c_str());
-        if (r.is_error()) {
-            throw connection_error(r.error_value());
-        }
-        reply_iterator i(std::move(r.unwrap()));    
-        return i;
-        // if (!connection) {
-        //     throw connection_error("trying to use invalid endpoint object to read value");
-        // }
-        // auto a = result::try_into<result::array>(result::any::from((redisReply*)redisCommand(cast(connection), "LRANGE %s 0 -1", name.c_str())));
-        // if (a.is_ok()) { 
-        //     reply_iterator i(std::move(a.unwrap()));
-        //     return i;
-        // } else {
-        //     return end();
-        // }
-=======
         auto r = internal::process_validate<result::array>::run(connection, "LRANGE %s 0 -1", name.c_str());
         
         reply_iterator i(std::move(r));    
         return i;
->>>>>>> e4858b8defad800a2de7ef2bb7e3f6bf2805622c
     }
 
     rarray::iterator rarray::end() const
@@ -501,27 +383,9 @@ namespace redis
 
     rarray::size_type rarray::size() const
     {
-<<<<<<< HEAD
-        auto r = process<result::array>::run(connection, "LLEN %s", name.c_str());
-        if (r.is_error()) {
-            throw connection_error(r.error_value());
-        }
-        return r.unwrap().size();
-        // if (!connection) {
-        //     throw connection_error("trying to use invalid endpoint object to read value length");
-        // }
-        // //reply r = (redisReply*)redisCommand(cast(connection), "LLEN %s", name.c_str());
-        // if (const auto r  = Ok(result::try_into<result::array>(
-        //         result::any::from(
-        //             (redisReply*)redisCommand(cast(connection), "GET %s", name.c_str())))); r) {
-        //     return r.value().size();
-        // }
-        // throw std::runtime_error("this is not a valid array entry");
-=======
         auto r = internal::process_validate<result::array>::run(connection, "LLEN %s", name.c_str());
         
         return r.size();
->>>>>>> e4858b8defad800a2de7ef2bb7e3f6bf2805622c
     }
 
     bool rarray::empty() const

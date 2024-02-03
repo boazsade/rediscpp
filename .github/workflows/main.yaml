@@ -1,4 +1,4 @@
-name: Http Monitoring PR FLow 
+name: redis-cpp PR FLow 
 
 on:
     pull_request:

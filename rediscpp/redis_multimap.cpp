@@ -52,7 +52,7 @@ multimap_iterator::result_type multimap_iterator::dereference() const
     static const auto end = reply_iterator{};
     if (current != end && at(current) % 2 == 0) { // make sure that we can dereference from legal value!
         reply_iterator tmp(current);
-        const auto s = result::try_into<result::string>(*current).and_then([&tmp](auto&& s) -> ::result<result_type, std::string> {
+        const auto st = result::try_into<result::string>(*current).and_then([&tmp](auto&& s) -> ::result<result_type, std::string> {
            ++tmp;
             //mapped_type m(tmp->answer(), tmp->size());
             const auto m = result::try_into<result::string>(*tmp);
@@ -61,8 +61,8 @@ multimap_iterator::result_type multimap_iterator::dereference() const
             }
             return failed("failed to convert mapped type"s);
         });
-        if (s.is_ok()) {
-            return s.unwrap();
+        if (st.is_ok()) {
+            return st.unwrap();
         }
     }
     return {};

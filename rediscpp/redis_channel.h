@@ -14,12 +14,12 @@ namespace redis
         sender.send("a message");
         // in another thread or process do 
         subscriber reader messages.make_subscriber();
-        // do wait for more than 10 seconds
-        message_type msg = reader.read(end_point::seconds(10));
+        // do wait for more than 10 seconds_t
+        message_type msg = reader.read(end_point::seconds_t(10));
         if (msg.second == subscriber::OK) {
             std::cout<<"got message "<<msg.first<<" from publisher\n";
         } else {
-            std::cout<<"fail to get a message from the publisher in 10 seconds"<<std::endl;
+            std::cout<<"fail to get a message from the publisher in 10 seconds_t"<<std::endl;
         }
    */
     struct publisher;
@@ -91,11 +91,11 @@ namespace redis
 
         message_type read() const;
 
-        message_type read(const end_point::timeout& to) const;
+        message_type read(const end_point::timeout_t& to) const;
 
-        message_type read(const end_point::seconds& s) const;
+        message_type read(const end_point::seconds_t& s) const;
 
-        message_type read(const end_point::milliseconds& ms) const;
+        message_type read(const end_point::milliseconds_t& ms) const;
         // would only work if this is running in different thread to finish this - once this is called
         // you would not be able to read from this channel any more!
         void interrupt() const;   
