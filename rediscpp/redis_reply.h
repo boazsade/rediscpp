@@ -33,21 +33,6 @@ namespace result {
             internal_handler handler;
         };
 
-        // template<result_type Type>
-        // struct data_type {
-        //     using internals = lowlevel_access::internals;
-        // protected:
-        //     data_type(internals* from, int cond) : handler{from} {
-        //         panic_if(from, cond);
-        //     }
-
-        //     auto access() const -> internals& {
-        //         assert(handler.get());
-        //         return *handler.get();
-        //     }
-
-        //     details::lowlevel_access handler;
-        // };
     }       // end of namespace details
 
     const struct differ_t {} differ = differ_t();
@@ -171,22 +156,6 @@ namespace result {
         auto as_array() const -> ::result<array, std::string> {
             return cast<array>([this]() { return is_array();});
         }
-
-            // allow you to run some operation F with Args on the result
-            // note that the first arg for F must match the value inside our result
-            // for example if we have string type than F must be
-            // auto foo(string&&, ...args) -> T
-        // template<typename F, typename ...Args>
-        // auto run_op(F&& f, Args...args) const -> typename std::invoke_result_t<F, Args...> {
-        //     std::visit(overloaded{
-        //         [f](const error& arg) { std::forward(f, arg, ...args); },
-        //         [f](const status& arg) {std::forward(f, arg, ...args);},
-        //         [f](integer arg) { std::forward(f, arg, ...args); },
-        //         [](const array& arg) {std::forward(f, arg, ...args); },
-        //         [](const string& arg) { std::forward(f, arg, ...args); },
-        //         [](null arg) { std::forward(f, arg, ...args); }
-        //     }, internal);
-        // }
 
 
     private:

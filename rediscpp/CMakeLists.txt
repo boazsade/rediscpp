@@ -1,5 +1,5 @@
-#include(flags)
-#include(dependencies)
+include(flags)
+include(dependencies)
 
 add_library(rediscpp STATIC           
            redis_channel.h  redis_channel.cpp 

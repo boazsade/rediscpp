@@ -1,2 +1,13 @@
 build/
 test.cpp
+*.save
+,ninja_*
+CMakeCache*
+Ctest*
+cmake.*
+rule.ninja
+CMakeCCompiler*
+a.out
+CMakeCXXCompiler
+cmake_install
+build-*
