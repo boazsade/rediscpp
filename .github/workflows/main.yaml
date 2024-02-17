@@ -3,7 +3,7 @@ name: redis-cpp PR FLow
 on:
     pull_request:
       branches:
-      - main
+      - master
 permissions: write-all
 
 jobs:
@@ -21,11 +21,12 @@ jobs:
               username: ${{ github.repository_owner }}
               password: ${{ secrets.GITHUB_TOKEN }}
         steps:
-            - name: Checkout code
-              uses: actions/checkout@v4
+            - uses: actions/checkout@v3
+              with:
+                submodules: true
             - name: Install dependencies
               run: |
-                apt install -y libhiredis-dev
+                apt update && apt install -y libhiredis-dev
             - name: Build
               run: |
                 ./build.sh -g 1 -t ${{ matrix.build-type }} -b build/${{ matrix.build-type }}

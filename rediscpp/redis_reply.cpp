@@ -24,9 +24,17 @@ namespace
 
 namespace details {
 
-auto panic_if(lowlevel_access::internals* from, int cond) -> void {
+auto panic_if(lowlevel_access::internals* from, int cond) -> bool {
     assert(from);
     assert(from->type == cond);
+#ifdef PANIC_WILL_TERMINATE
+    if (from && from->type == cond) {
+        return true;
+    }
+    std::terminate();
+#else
+    return from && from->type == cond;
+#endif
 }
 
 lowlevel_access::lowlevel_access(internals* from, int cond) : 
