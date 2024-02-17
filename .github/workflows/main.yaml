@@ -26,7 +26,7 @@ jobs:
                 submodules: true
             - name: Install dependencies
               run: |
-                apt update && apt install -y libhiredis-dev               
+                apt update && apt install -y libhiredis-dev
             - name: Build
               run: |
                 ./build.sh -g 1 -t ${{ matrix.build-type }} -b build/${{ matrix.build-type }}
